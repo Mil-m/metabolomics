@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <title>Study Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='form_style.css') }}">
+    <style>
+      table, th, td {
+         border: 1px solid #333;
+         border-collapse: collapse;
+      }
+      th, td {
+         padding: 8px;
+         text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Study Details</h1>
+    <h2>{{ data["Dataset Title"] }}</h2>
+    <p>{{ data["Dataset Description"] }}</p>
+
+    <h3>Assays</h3>
+    <table>
+      <thead>
+         <tr>
+           <th>Assay Number</th>
+           <th>Measurement</th>
+           <th>Technology</th>
+           <th>Platform</th>
+           <th>File Name</th>
+           <th>Reported Metabolite Names</th>
+           <th>Raw Data File Names</th>
+         </tr>
+      </thead>
+      <tbody>
+         {% for assay in data["assays"] %}
+           {% for assay_number, assay_details in assay.items() %}
+           <tr>
+             <td>{{ assay_number }}</td>
+             <td>{{ assay_details["metadata"]["measurement"] }}</td>
+             <td>{{ assay_details["metadata"]["technology"] }}</td>
+             <td>{{ assay_details["metadata"]["platform"] }}</td>
+             <td>{{ assay_details["metadata"]["file name"] }}</td>
+             <td>
+                {% if assay_details.get("reported_metabolite_names") %}
+                  {{ assay_details["reported_metabolite_names"] | join(", ") }}
+                {% else %}
+                  -
+                {% endif %}
+             </td>
+             <td>
+                <div style="max-height: 150px; overflow-y: auto;">
+                  {% for raw_files in assay_details["raw data file names"] %}
+                    {{ raw_files | join(", ") }}<br><br>
+                  {% endfor %}
+                </div>
+              </td>
+           </tr>
+           {% endfor %}
+         {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>

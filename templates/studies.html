@@ -1,0 +1,21 @@
+<html>
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link rel="stylesheet" href="{{ url_for('static', filename='form_style.css') }}">
+    </head>
+
+    <body>
+        {% import 'bootstrap/wtf.html' as wtf %}
+        <h2>Choose option.</h2>
+        {% block app_content %}
+            <h1>MetaboLights public studies</h1>
+            <form method="POST" action="{{ url_for('metabolomics') }}">
+                {{ form.hidden_tag() }}
+                Study: {{ form.study }}
+                <input type="submit" value="Get study info">
+            </form>
+        {% endblock %}
+    </body>
+
+</html>
