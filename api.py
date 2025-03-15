@@ -1,7 +1,10 @@
+import io
 import secrets
 import logging
+import zipfile
+
 import requests
-from flask import Flask, jsonify, render_template, url_for, redirect, request, flash, session
+from flask import Flask, jsonify, render_template, url_for, redirect, request, flash, session, send_file
 from flask_bootstrap import Bootstrap
 
 from forms import MetabolightsStudyInfo, MetabolightsLoginForm
@@ -93,9 +96,9 @@ def metabolights_get_study_details_info(study_id: str):
                 api_session=api_session
             )
             study_info_data['result_file_names'] = study_result_files
-        return render_template('study_info.html', data=study_info_data)
+        return render_template('study_info.html', data=study_info_data, study_id=study_id)
     else:
-        return render_template('study_info.html', data={}), resp_code
+        return render_template('study_info.html', data={}, study_id=study_id), resp_code
 
 
 @app.route('/metabolomics', methods=['GET', 'POST'])
@@ -144,9 +147,39 @@ def metabolomics():
         return render_template('studies.html', form=metabolights_form, login_form=login_form)
 
 
-@app.route('/metabolights_download_data', methods=['GET'], strict_slashes=False)
-def metabolights_download_data(outp_dir: str):
-    return
+@app.route('/metabolights_download_file/<study_id>/<filename>', methods=['GET'], strict_slashes=False)
+def metabolights_download_file(study_id: str, filename: str):
+    url = f"https://www.ebi.ac.uk/metabolights/ws/studies/{study_id}/download"
+
+    request_data = {
+        'study_id': study_id,
+        'file': filename
+    }
+
+    response = api_session.get(url, params=request_data, stream=True)
+
+    if response.ok:
+        if filename == 'metadata':
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr('metadata.zip', response.content)
+
+            zip_buffer.seek(0)
+            return send_file(
+                zip_buffer,
+                as_attachment=True,
+                attachment_filename='metadata.zip',
+                mimetype='application/zip'
+            )
+        else:
+            file_data = response.content
+            return send_file(
+                io.BytesIO(file_data),
+                as_attachment=True,
+                attachment_filename=filename
+            )
+    else:
+        return response.status_code
 
 
 if __name__ == '__main__':
