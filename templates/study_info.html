@@ -19,6 +19,14 @@
     <h1>Study Details</h1>
     <h2>{{ data["Dataset Title"] }}</h2>
     <p>{{ data["Dataset Description"] }}</p>
+    {% if data.get("result_file_names") %}
+      <h3>Result Files</h3>
+      <div style="max-height: 150px; overflow-y: auto;">
+        {{ data["result_file_names"] | join("<br>") | safe }}
+      </div>
+    {% else %}
+      <p></p>
+    {% endif %}
 
     <h3>Assays</h3>
     <table>
@@ -41,7 +49,7 @@
              <td>{{ assay_details["metadata"]["measurement"] }}</td>
              <td>{{ assay_details["metadata"]["technology"] }}</td>
              <td>{{ assay_details["metadata"]["platform"] }}</td>
-             <td>{{ assay_details["metadata"]["file name"] }}</td>
+             <td>{{ assay_details["metadata"]["file_name"] }}</td>
              <td>
                 {% if assay_details.get("reported_metabolite_names") %}
                   {{ assay_details["reported_metabolite_names"] | join(", ") }}
@@ -51,7 +59,7 @@
              </td>
              <td>
                 <div style="max-height: 150px; overflow-y: auto;">
-                  {% for raw_files in assay_details["raw data file names"] %}
+                  {% for raw_files in assay_details["raw_data_file_names"] %}
                     {{ raw_files | join(", ") }}<br><br>
                   {% endfor %}
                 </div>
