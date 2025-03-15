@@ -17,26 +17,30 @@
   </head>
   <body>
     <h1>Study Details</h1>
-    <h2>{{ data["Dataset Title"] }}</h2>
-    <p>{{ data["Dataset Description"] }}</p>
-    {% if data.get("result_file_names") %}
-      <h3>Result Files</h3>
-      <div style="max-height: 150px; overflow-y: auto;">
-        {% for file_name in data["result_file_names"] %}
-        <li>
-          <a href="{{ url_for('metabolights_download_file', study_id=study_id, filename=file_name) }}" download>
-            {{ file_name }}
-          </a>
-        </li>
-        {% endfor %}
-      </div>
-      <div style="margin-top: 20px;">
-          <a href="{{ url_for('metabolights_download_file', study_id=study_id, filename='metadata') }}" download>
-              <button>Download ISA-Tab metadata</button>
-          </a>
-      </div>
+    {% if data %}
+      <h2>{{ data.get("title", "N/A") }}</h2>
+      <p>{{ data.get("description", "N/A") }}</p>
+      {% if data.get("result_file_names") %}
+        <h3>Result Files</h3>
+        <div style="max-height: 150px; overflow-y: auto;">
+          {% for file_name in data["result_file_names"] %}
+          <li>
+            <a href="{{ url_for('metabolights_download_file', study_id=study_id, filename=file_name) }}" download>
+              {{ file_name }}
+            </a>
+          </li>
+          {% endfor %}
+        </div>
+        <div style="margin-top: 20px;">
+            <a href="{{ url_for('metabolights_download_file', study_id=study_id, filename='metadata') }}" download>
+                <button>Download ISA-Tab metadata</button>
+            </a>
+        </div>
+      {% else %}
+        <p></p>
+      {% endif %}
     {% else %}
-      <p></p>
+        <p>No study details available.</p>
     {% endif %}
 
     <h3>Assays</h3>

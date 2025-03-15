@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <title>Study Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='form_style.css') }}">
+    <style>
+      table, th, td {
+         border: 1px solid #333;
+         border-collapse: collapse;
+      }
+      th, td {
+         padding: 8px;
+         text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+     <h1>Study Details</h1>
+    {% if data %}
+        <h2>Study Title: {{ data.get("study_title", "N/A") }}</h2>
+        <h2>Species: {{ data.get("species", "N/A") }}</h2>
+        <h2>Institute: {{ data.get("institute", "N/A") }}</h2>
+        <h2>Analysis type: {{ data.get("analysis_type", "N/A") }}</h2>
+        <h2>Number of samples: {{ data.get("number_of_samples", "N/A") }}</h2>
+    {% else %}
+        <p>No study details available.</p>
+    {% endif %}
+
+    <h3>Assays</h3>
+    <table>
+      <thead>
+         <tr>
+           <th>Assay Number</th>
+           <th>Analysis Id</th>
+           <th>Analysis Summary</th>
+           <th>Reported Metabolite Name</th>
+           <th>Refmet Name</th>
+         </tr>
+      </thead>
+      <tbody>
+         {% for assay in data["assays"] %}
+           {% for assay_number, assay_details in assay.items() %}
+           <tr>
+             <td>{{ assay_number }}</td>
+             <td>{{ assay_details["metadata"]["analysis_id"] }}</td>
+             <td>{{ assay_details["metadata"]["analysis_summary"] }}</td>
+             <td>{{ assay_details["metadata"]["reported_metabolite_name"] }}</td>
+             <td>{{ assay_details["metadata"]["refmet_name"] }}</td>
+
+           </tr>
+           {% endfor %}
+         {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>

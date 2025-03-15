@@ -1,18 +1,54 @@
 import pprint
 
 
-def fetch_metadata_and_result_files(assays_content):
+def fetch_study_list(api_url: str, source: str, api_session):
+    """
+
+    :param api_url:
+    :param source:
+    :param api_session:
+    :return:
+    """
+    response = api_session.get(api_url)
+    if response.ok:
+        json_data = response.json()
+        if source == 'metabolights':
+            study_lst = json_data.get('content', [])
+        elif source == 'workbench':
+            study_lst = [study['study_id'] for study in json_data.values() if 'study_id' in study]
+        return [(study, study) for study in study_lst]
+    return []
+
+
+def metabolights_get_study_details(study_id: str, api_session):
+    """
+
+    :param study_id:
+    :param api_session:
+    :return:
+    """
+
+    study_url = f"https://www.ebi.ac.uk/metabolights/ws/studies/public/study/{study_id}"
+    response = api_session.get(study_url)
+
+    if response.ok:
+        return response.json()['content'], 200
+    else:
+        return {}, response.status_code
+
+
+def fetch_metadata_and_raw_files(assays_content):
     """
 
     :param assays_content:
     :return:
     """
-    
+
     result_data = {}
     
     # dataset’s title, description
-    result_data['Dataset Title'] = assays_content['title']
-    result_data['Dataset Description'] = assays_content['description']
+    result_data['title'] = assays_content['title']
+    result_data['description'] = assays_content['description']
     
     assays_lst_data = []
     
@@ -33,7 +69,6 @@ def fetch_metadata_and_result_files(assays_content):
         
         # d. reported metabolite names
         if 'metaboliteAssignment' in assays_el:
-            metabolite_assignment_file_name = assays_el['metaboliteAssignment']['metaboliteAssignmentFileName']
             reported_metabolite_names = assays_el['metaboliteAssignment']['metaboliteAssignmentLines']
             assays_el_data[number]['reported_metabolite_names'] = reported_metabolite_names
         
@@ -56,6 +91,7 @@ def fetch_result_files(study_id: str, api_token: str, api_session):
 
     :param study_id:
     :param api_token:
+    :param api_session:
     :return:
     """
 
@@ -78,3 +114,44 @@ def fetch_result_files(study_id: str, api_token: str, api_session):
         return response_files, 200
     else:
         return [], response.status_code
+
+
+def metabolomics_workbench_get_study_details(study_id: str, api_session):
+    """
+
+    :param study_id:
+    :param api_session:
+    :return:
+    """
+
+    study_url = f"https://www.metabolomicsworkbench.org/rest/study/study_id/{study_id}/summary"
+    response = api_session.get(study_url)
+    if response.ok:
+        study_info_data = response.json()
+
+        metabolites_url = f"https://www.metabolomicsworkbench.org/rest/study/study_id/{study_id}/metabolites"
+        metabolites_response = api_session.get(metabolites_url)
+        if metabolites_response.ok:
+            metabolites_data = metabolites_response.json()
+            if metabolites_data:
+                assays_lst_data = []
+                for number, assays_el in metabolites_data.items():
+                    assays_el_data = {}
+                    assays_el_data[number] = {}
+
+                    assays_el_data[number]['metadata'] = {
+                        'analysis_id': assays_el['analysis_id'],
+                        'analysis_summary': assays_el['analysis_summary'],
+                        'reported_metabolite_name': assays_el['metabolite_name'],
+                        'refmet_name': assays_el['refmet_name']
+                    }
+
+                    assays_lst_data.append(assays_el_data)
+
+                study_info_data['assays'] = assays_lst_data
+
+            return study_info_data, 200
+        else:
+            return {}, metabolites_response.status_code
+    else:
+        return {}, response.status_code

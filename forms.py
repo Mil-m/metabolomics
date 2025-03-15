@@ -8,7 +8,14 @@ class MetabolightsLoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
 
-class MetabolightsStudyInfo(FlaskForm):
+class MetabolightsForm(FlaskForm):
+    study = SelectField('Study',
+                        validators=[DataRequired()],
+                        choices=[],
+                        render_kw={'rows': 1, 'cols': 5})
+    submit = SubmitField('Get study info')
+
+class MetabolomicsWorkbenchForm(FlaskForm):
     study = SelectField('Study',
                         validators=[DataRequired()],
                         choices=[],

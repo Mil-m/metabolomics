@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>MetaboLights</title>
+    <title>Metabolomics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='form_style.css') }}">
   </head>
   <body>
@@ -18,24 +18,37 @@
       <div class="form-box" id="study-box">
         <h1>MetaboLights public studies</h1>
         <form method="POST" action="{{ url_for('metabolomics') }}">
-          <input type="hidden" name="form-name" value="selection"/>
-          {{ form.hidden_tag() }}
-          <label for="{{ form.study.id }}">Study:</label>
-          {{ form.study() }}
+          <input type="hidden" name="form-name" value="metabolights-selection"/>
+          {{ metabolights_form.hidden_tag() }}
+          <label for="{{ metabolights_form.study.id }}">Study:</label>
+          {{ metabolights_form.study() }}
           <input type="submit" value="Get study info">
         </form>
       </div>
 
-      <div class="form-box" id="login-box">
-        <h3>MetaboLights authentication</h3>
+      {% if not session.get('api_token') %}
+        <div class="form-box" id="login-box">
+          <h3>MetaboLights authentication</h3>
+          <form method="POST" action="{{ url_for('metabolomics') }}">
+            <input type="hidden" name="form-name" value="metabolights-login"/>
+            {{ metabolights_login_form.hidden_tag() }}
+            <label for="{{ metabolights_login_form.email.id }}">Email:</label>
+            {{ metabolights_login_form.email() }}
+            <label for="{{ metabolights_login_form.password.id }}">Password:</label>
+            {{ metabolights_login_form.password() }}
+            <input type="submit" value="Login">
+          </form>
+        </div>
+      {% endif %}
+
+      <div class="form-box" id="metabolomicsworkbench-study-box">
+        <h1>Metabolomics Workbench public studies</h1>
         <form method="POST" action="{{ url_for('metabolomics') }}">
-          <input type="hidden" name="form-name" value="login"/>
-          {{ login_form.hidden_tag() }}
-          <label for="{{ login_form.email.id }}">Email:</label>
-          {{ login_form.email() }}
-          <label for="{{ login_form.password.id }}">Password:</label>
-          {{ login_form.password() }}
-          <input type="submit" value="Login">
+          <input type="hidden" name="form-name" value="metabolomicsworkbench-selection"/>
+          {{ metabolomicsworkbench_form.hidden_tag() }}
+          <label for="{{ metabolomicsworkbench_form.study.id }}">Study:</label>
+          {{ metabolomicsworkbench_form.study() }}
+          <input type="submit" value="Get study info">
         </form>
       </div>
     </div>
