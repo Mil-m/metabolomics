@@ -17,7 +17,13 @@
     <div class="form-container">
       <div class="form-box" id="study-box">
         <h1>MetaboLights studies</h1>
-        <form method="POST" action="{{ url_for('metabolomics') }}">
+        <div id="metabolights-loading" class="loading-message">
+          Loading studies... <div class="loader"></div>
+        </div>
+        <div id="metabolights-error" class="error-message" style="display: none;">
+          Error loading studies. Please try again later.
+        </div>
+        <form method="POST" action="{{ url_for('metabolomics') }}" id="metabolights-form" style="display: none;">
           <input type="hidden" name="form-name" value="metabolights-selection"/>
           {{ metabolights_form.hidden_tag() }}
           <label for="{{ metabolights_form.study.id }}">Study:</label>
@@ -43,7 +49,13 @@
 
       <div class="form-box" id="metabolomicsworkbench-study-box">
         <h1>Metabolomics Workbench studies</h1>
-        <form method="POST" action="{{ url_for('metabolomics') }}">
+        <div id="workbench-loading" class="loading-message">
+          Loading studies... <div class="loader"></div>
+        </div>
+        <div id="workbench-error" class="error-message" style="display: none;">
+          Error loading studies. Please try again later.
+        </div>
+        <form method="POST" action="{{ url_for('metabolomics') }}" id="workbench-form" style="display: none;">
           <input type="hidden" name="form-name" value="metabolomicsworkbench-selection"/>
           {{ metabolomicsworkbench_form.hidden_tag() }}
           <label for="{{ metabolomicsworkbench_form.study.id }}">Study:</label>
@@ -54,7 +66,13 @@
 
       <div class="form-box" id="metabobank-study-box">
         <h1>Metabobank studies</h1>
-        <form method="POST" action="{{ url_for('metabolomics') }}">
+        <div id="metabobank-loading" class="loading-message">
+          Loading studies... <div class="loader"></div>
+        </div>
+        <div id="metabobank-error" class="error-message" style="display: none;">
+          Error loading studies. Please try again later.
+        </div>
+        <form method="POST" action="{{ url_for('metabolomics') }}" id="metabobank-form" style="display: none;">
           <input type="hidden" name="form-name" value="metabobank-selection"/>
           {{ metabobank_form.hidden_tag() }}
           <label for="{{ metabobank_form.study.id }}">Study:</label>
@@ -63,5 +81,66 @@
         </form>
       </div>
     </div>
+
+    <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      function updateSelectOptions(selectId, data) {
+        const select = document.querySelector(`#${selectId} select`);
+        if (!select) return;
+        select.innerHTML = '<option value="">Select a study</option>';
+        data.forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        });
+      }
+
+      function handleLoading(prefix, isLoading, hasError = false) {
+        document.getElementById(`${prefix}-loading`).style.display = isLoading ? 'block' : 'none';
+        document.getElementById(`${prefix}-error`).style.display = hasError ? 'block' : 'none';
+        document.getElementById(`${prefix}-form`).style.display = (!isLoading && !hasError) ? 'block' : 'none';
+      }
+
+      fetch('/fetch_metabolights_studies')
+        .then(response => response.json())
+        .then(data => {
+          updateSelectOptions('metabolights-form', data);
+          handleLoading('metabolights', false);
+        })
+        .catch(error => {
+          console.error('Error fetching MetaboLights studies:', error);
+          handleLoading('metabolights', false, true);
+        });
+
+      fetch('/fetch_workbench_studies')
+        .then(response => response.json())
+        .then(data => {
+          updateSelectOptions('workbench-form', data);
+          handleLoading('workbench', false);
+        })
+        .catch(error => {
+          console.error('Error fetching Workbench studies:', error);
+          handleLoading('workbench', false, true);
+        });
+
+      fetch('/fetch_metabobank_studies')
+        .then(response => response.json())
+        .then(data => {
+          updateSelectOptions('metabobank-form', data);
+          handleLoading('metabobank', false);
+        })
+        .catch(error => {
+          console.error('Error fetching MetaboBank studies:', error);
+          handleLoading('metabobank', false, true);
+        });
+    });
+    </script>
   </body>
 </html>

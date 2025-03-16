@@ -210,6 +210,36 @@ def metabobank_download_file(file_url: str):
         return response.status_code
 
 
+def fetch_metabolights_studies():
+    api_url = "https://www.ebi.ac.uk/metabolights/ws/studies"
+    return fetch_study_list(api_url=api_url, source='metabolights', api_session=api_session)
+
+
+def fetch_workbench_studies():
+    api_url = "https://www.metabolomicsworkbench.org/rest/study/study_id/ST/summary"
+    return fetch_study_list(api_url=api_url, source='workbench', api_session=api_session)
+
+
+def fetch_metabobank_studies():
+    api_url = "https://ddbj.nig.ac.jp/public/metabobank/study/"
+    return fetch_study_list(api_url=api_url, source='metabobank', api_session=api_session)
+
+
+@app.route('/fetch_metabolights_studies')
+def fetch_metabolights_studies_json():
+    return jsonify(fetch_metabolights_studies())
+
+
+@app.route('/fetch_workbench_studies')
+def fetch_workbench_studies_json():
+    return jsonify(fetch_workbench_studies())
+
+
+@app.route('/fetch_metabobank_studies')
+def fetch_metabobank_studies_json():
+    return jsonify(fetch_metabobank_studies())
+
+
 @app.route('/metabolomics', methods=['GET', 'POST'])
 def metabolomics():
     """
@@ -222,23 +252,16 @@ def metabolomics():
     metabolomicsworkbench_form = MetabolomicsWorkbenchForm()
     metabobank_form = MetabobankForm()
 
-    api_url = "https://www.ebi.ac.uk/metabolights/ws/studies"
-    metabolights_form.study.choices = fetch_study_list(
-        api_url=api_url, source='metabolights', api_session=api_session
-    )
-
-    api_url = "https://www.metabolomicsworkbench.org/rest/study/study_id/ST/summary"
-    metabolomicsworkbench_form.study.choices = fetch_study_list(
-        api_url=api_url, source='workbench', api_session=api_session
-    )
-
-    api_url = "https://ddbj.nig.ac.jp/public/metabobank/study/"
-    metabobank_form.study.choices = fetch_study_list(
-        api_url=api_url, source='metabobank', api_session=api_session
-    )
-
     if request.method == 'POST':
         form_type = request.form.get('form-name')
+
+        if form_type == 'metabolights-selection':
+            metabolights_form.study.choices = fetch_metabolights_studies()
+        elif form_type == 'metabolomicsworkbench-selection':
+            metabolomicsworkbench_form.study.choices = fetch_workbench_studies()
+        elif form_type == 'metabobank-selection':
+            metabobank_form.study.choices = fetch_metabobank_studies()
+
         if form_type == 'metabolights-login':
             email = request.form.get('email')
             password = request.form.get('password')
@@ -272,4 +295,4 @@ def metabolomics():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

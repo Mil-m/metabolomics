@@ -25,18 +25,19 @@ h2 {
     font-size:10pt;
 }
 
-input[type=text], textarea {
-    min-width:95%;
-    background:#fffae4;
-    border:1px solid #ffe77c;
-    padding:3px 5px 3px 5px;
-    margin:3px;
+input[type=text], input[type=password], textarea {
+    min-width: 95% !important;
+    background: #fffae4 !important;
+    border: 1px solid #ffe77c !important;
+    padding: 3px 5px !important;
+    margin: 3px !important;
+    box-sizing: border-box;
 }
 
-
 input[type=submit], input[type=button] {
-    margin:1em 0 0 10%;
-    padding:10px 20px;
+    display: block;
+    margin: 1em 0 0 10%;
+    padding: 10px 20px;
 }
 
 form {
@@ -74,3 +75,29 @@ dd:nth-child(even)       {background: #fafafa}
 dd:nth-child(odd)        {background: #ffffff}
 dd:nth-child(even):hover {background: #e0e0e0}
 dd:nth-child(odd):hover  {background: #e0e0e0}
+
+.loading-message {
+  padding: 10px;
+  margin: 10px;
+  border: 1px solid #c7c7c7;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-message {
+  padding: 10px;
+  margin: 10px;
+  border: 1px solid #c7c7c7;
+  background: #ffe6e6;
+}
+
+.loader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #777;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}

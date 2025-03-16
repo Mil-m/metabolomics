@@ -44,7 +44,11 @@
                   {% endfor %}
                 </div>
              </td>
-             <td>{{ data["raw_files"] | join(", ") }}</td>
+             <td>
+               <div style="max-height: 150px; overflow-y: auto;">
+                  {{ data["raw_files"] | join(", ") }}
+                </div>
+             </td>
            </tr>
       </tbody>
     </table>
