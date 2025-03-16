@@ -1,6 +1,6 @@
 import io
-import secrets
 import logging
+import secrets
 import zipfile
 import requests
 from flask import Flask, jsonify, render_template, url_for, redirect, request, flash, session, send_file
@@ -10,11 +10,13 @@ from forms import MetabolightsForm, MetabolightsLoginForm, MetabolomicsWorkbench
 from utils import (metabolights_fetch_metadata_and_raw_files, metabolights_fetch_result_files, fetch_study_list,
                    metabolights_get_study_details, metabolomics_workbench_get_study_details,
                    metabobank_get_study_details)
+from logging_config import logger
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_urlsafe(16)
 Bootstrap(app)
 
+app.logger.addHandler(logging.StreamHandler())
 app.logger.setLevel(logging.INFO)
 
 api_session = requests.Session()
@@ -22,12 +24,20 @@ api_session = requests.Session()
 
 @app.route('/')
 def index():
+    """
+    Redirects the root URL to the metabolomics page.
+    :return: a redirect response to the '/metabolomics' endpoint
+    """
     return redirect(url_for('metabolomics'))
 
 
 @app.route('/metabolights_login', methods=['POST'], strict_slashes=False)
 def metabolights_login(email: str, secret: str):
     """
+    MetaboLights login function used in the 'metabolights-login' form
+    :param email: user email
+    :param secret: user password
+    :return: a JSON response with the 'api_token' and 'jwt_token' and HTTP status code
     """
     login_url = "https://www.ebi.ac.uk/metabolights/ws/auth/login"
 
@@ -43,7 +53,7 @@ def metabolights_login(email: str, secret: str):
     try:
         response = api_session.post(login_url, json=login_data, headers=headers)
     except requests.exceptions.ConnectionError as e:
-        print(f"Connection error occurred: {e}")
+        logger.error(f"Connection error occurred: {e}")
         return {}, 500
 
     if response.ok:
@@ -62,6 +72,7 @@ def metabolights_login(email: str, secret: str):
                 "jwt_token": jwt_token
             }), 200
         else:
+            logger.error(f"error in jwt validation; response code:{response_jwt.status_code}")
             flash(f"error in jwt validation; response code:{response_jwt.status_code}", 'success')
             return jsonify({
                 "api_token": api_token,
@@ -77,6 +88,11 @@ def metabolights_login(email: str, secret: str):
 @app.route('/metabolights_get_study_details_info/<study_id>', methods=['GET'], strict_slashes=False)
 def metabolights_get_study_details_info(study_id: str):
     """
+    Retrieves study details from MetaboLights and renders the study information page.
+    :param study_id: current study id
+    :return: an HTML page rendered with study metadata and raw files;
+             if available, includes result file names when the API token is present in the session
+             with an option of download them
     """
     study_details, resp_code = metabolights_get_study_details(study_id=study_id, api_session=api_session)
     if resp_code == 200:
@@ -95,6 +111,13 @@ def metabolights_get_study_details_info(study_id: str):
 
 @app.route('/metabolights_download_file/<study_id>/<filename>', methods=['GET'], strict_slashes=False)
 def metabolights_download_file(study_id: str, filename: str):
+    """
+    Downloads a specified file for a given MetaboLights study.
+    :param study_id: current study id
+    :param filename: filename of the current file
+    :return: a file response; if the filename is 'metadata', the file is wrapped into a ZIP archive before sending;
+             otherwise, the file content is sent directly; in case of an error, returns the HTTP status code
+    """
     url = f"https://www.ebi.ac.uk/metabolights/ws/studies/{study_id}/download"
 
     request_data = {
@@ -102,7 +125,11 @@ def metabolights_download_file(study_id: str, filename: str):
         'file': filename
     }
 
-    response = api_session.get(url, params=request_data, stream=True)
+    try:
+        response = api_session.get(url, params=request_data, stream=True)
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error occurred: {e}")
+        return {}, 500
 
     if response.ok:
         if filename == 'metadata':
@@ -131,6 +158,10 @@ def metabolights_download_file(study_id: str, filename: str):
 @app.route('/metabolomics_workbench_get_study_details_info/<study_id>', methods=['GET'], strict_slashes=False)
 def metabolomics_workbench_get_study_details_info(study_id: str):
     """
+    Retrieves study details from the Metabolomics Workbench and renders the corresponding study information page.
+    :param study_id: current study id
+    :return: an HTML page rendered with the study information if retrieval is successful; otherwise,
+             an HTML page with empty data and the relevant HTTP status code.
     """
     study_info_data, resp_code = metabolomics_workbench_get_study_details(study_id=study_id, api_session=api_session)
     if resp_code == 200:
@@ -141,6 +172,10 @@ def metabolomics_workbench_get_study_details_info(study_id: str):
 @app.route('/metabobank_get_study_details_info/<study_id>', methods=['GET'], strict_slashes=False)
 def metabobank_get_study_details_info(study_id: str):
     """
+    Retrieves study details from the Metabobank and renders the corresponding study information page.
+    :param study_id: current study id
+    :return: an HTML page rendered with the study information if retrieval is successful; otherwise,
+             an HTML page with empty data and the relevant HTTP status code.
     """
     study_info_data, resp_code = metabobank_get_study_details(study_id=study_id, api_session=api_session)
     if resp_code == 200:
@@ -149,8 +184,39 @@ def metabobank_get_study_details_info(study_id: str):
         return render_template('metabobank_study_info.html', data={}, study_id=study_id), resp_code
 
 
+@app.route('/metabobank_download_file/<path:file_url>', methods=['GET'], strict_slashes=False)
+def metabobank_download_file(file_url: str):
+    """
+    Downloads a specified file for a given Metabobank study.
+    :param file_url: url of the current file
+    :return: the file content is sent directly; in case of an error, returns the HTTP status code
+    """
+    try:
+        response = api_session.get(url=file_url, stream=True)
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error occurred: {e}")
+        return {}, 500
+
+    if response.ok:
+        file_name = file_url.split('/')[-1]
+        return send_file(
+            io.BytesIO(response.content),
+            as_attachment=True,
+            attachment_filename=file_name
+        )
+    else:
+        logger.error(f"Error downloading file: {file_url}")
+        flash(f"Error downloading file: {file_url}", "error")
+        return response.status_code
+
+
 @app.route('/metabolomics', methods=['GET', 'POST'])
 def metabolomics():
+    """
+    Displays the main page containing forms for selecting studies and logging in.
+    :return: an HTML page rendered with the study selection and login forms or
+             a redirect response based on the form submission
+    """
     metabolights_login_form = MetabolightsLoginForm()
     metabolights_form = MetabolightsForm()
     metabolomicsworkbench_form = MetabolomicsWorkbenchForm()

@@ -4,15 +4,17 @@ from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import requests
 
+from logging_config import logger
+
 _cache = {}
 CACHE_EXPIRY = 3600
 
 
 def cached(expiry=CACHE_EXPIRY):
     """
-    Decorator to cache function results with expiry time.
-    :param expiry:
-    :return:
+    Decorator to cache function results with a specified expiry time.
+    :param expiry: the lifetime of the cache in seconds
+    :return: a decorator that caches the function's result
     """
 
     def decorator(func):
@@ -35,16 +37,16 @@ def cached(expiry=CACHE_EXPIRY):
 
 
 @cached()
-def fetch_study_list(api_url: str, source: str, api_session):
+def fetch_study_list(api_url: str, source: str, api_session: requests.Session):
+    """
+    Fetches a list of studies from the given API URL and returns a list of tuples.
+    :param api_url: current url
+    :param source: current data source; acceptable values: 'metabolights', 'workbench', 'metabobank'
+    :param api_session: current session
+    :return: a list of tuples (value, label) to be used for the selection in the user form
     """
 
-    :param api_url:
-    :param source:
-    :param api_session:
-    :return:
-    """
-
-    print(f"Fetching study list from {source} (URL: {api_url})")
+    logger.info(f"Fetching study list from {source} (URL: {api_url})")
 
     # process the response based on the source
     def process_response(content, is_ok, source):
@@ -70,7 +72,7 @@ def fetch_study_list(api_url: str, source: str, api_session):
                             study_lst.append(href.strip("/"))
             return [(study, study) for study in study_lst]
         except Exception as e:
-            print(f"Error processing response from {source}: {e}")
+            logger.error(f"Error processing response from {source}: {e}")
             return []
 
     with ThreadPoolExecutor(max_workers=1) as executor:
@@ -80,24 +82,24 @@ def fetch_study_list(api_url: str, source: str, api_session):
             if response.ok:
                 return process_response(response.text, True, source)
         except Exception as e:
-            print(f"Async fetch failed: {e}")
+            logger.info(f"Async fetch failed: {e}")
 
     try:
         response = api_session.get(api_url)
         if response.ok:
             return process_response(response.text, True, source)
     except Exception as e:
-        print(f"Sync fetch failed: {e}")
+        logger.info(f"Sync fetch failed: {e}")
 
     return []
 
 
-def metabolights_get_study_details(study_id: str, api_session):
+def metabolights_get_study_details(study_id: str, api_session: requests.Session):
     """
-
-    :param study_id:
-    :param api_session:
-    :return:
+    Fetches study details from MetaboLights for the given study.
+    :param study_id: current study id
+    :param api_session: current session
+    :return: a dictionary of the study data and the HTTP status code
     """
 
     study_url = f"https://www.ebi.ac.uk/metabolights/ws/studies/public/study/{study_id}"
@@ -105,7 +107,7 @@ def metabolights_get_study_details(study_id: str, api_session):
     try:
         response = api_session.get(study_url)
     except requests.exceptions.ConnectionError as e:
-        print(f"Connection error occurred: {e}")
+        logger.error(f"Connection error occurred: {e}")
         return {}, 500
 
     if response.ok:
@@ -114,11 +116,11 @@ def metabolights_get_study_details(study_id: str, api_session):
         return {}, response.status_code
 
 
-def metabolights_fetch_metadata_and_raw_files(assays_content):
+def metabolights_fetch_metadata_and_raw_files(assays_content: dict):
     """
-
-    :param assays_content:
-    :return:
+    Extracts metadata and raw file names from the study content returned by MetaboLights.
+    :param assays_content: a dictionary containing study data from MetaboLights
+    :return: a dictionary with the study title, description, and a list of assays with their metadata and raw file names
     """
 
     result_data = {}
@@ -163,13 +165,14 @@ def metabolights_fetch_metadata_and_raw_files(assays_content):
     return result_data
 
 
-def metabolights_fetch_result_files(study_id: str, api_token: str, api_session):
+def metabolights_fetch_result_files(study_id: str, api_token: str, api_session: requests.Session):
     """
-
-    :param study_id:
-    :param api_token:
-    :param api_session:
-    :return:
+    Fetches the list of result files for a given MetaboLights study.
+    Will be executed only if the client logged-in into the MetaboLights.
+    :param study_id: current study id
+    :param api_token: current api token
+    :param api_session: current session
+    :return: list of the result files (or an empty list) and the HTTP status code
     """
 
     url = f"https://www.ebi.ac.uk/metabolights/ws/studies/{study_id}/files?include_raw_data=false"
@@ -186,8 +189,8 @@ def metabolights_fetch_result_files(study_id: str, api_token: str, api_session):
     try:
         response = api_session.get(url, json=request_data, headers=headers)
     except requests.exceptions.ConnectionError as e:
-        print(f"Connection error occurred: {e}")
-        return {}, 500
+        logger.error(f"Connection error occurred: {e}")
+        return [], 500
 
     if response.ok:
         response_data = response.json()
@@ -197,12 +200,12 @@ def metabolights_fetch_result_files(study_id: str, api_token: str, api_session):
         return [], response.status_code
 
 
-def metabolomics_workbench_get_study_details(study_id: str, api_session):
+def metabolomics_workbench_get_study_details(study_id: str, api_session: requests.Session):
     """
-
-    :param study_id:
-    :param api_session:
-    :return:
+    Fetches study details from Metabolomics Workbench for a given study, including assays data.
+    :param study_id: current study id
+    :param api_session: current session
+    :return: dictionary with study details and the HTTP status code
     """
 
     study_url = f"https://www.metabolomicsworkbench.org/rest/study/study_id/{study_id}/summary"
@@ -210,7 +213,7 @@ def metabolomics_workbench_get_study_details(study_id: str, api_session):
     try:
         response = api_session.get(study_url)
     except requests.exceptions.ConnectionError as e:
-        print(f"Connection error occurred: {e}")
+        logger.error(f"Connection error occurred: {e}")
         return {}, 500
 
     if response.ok:
@@ -220,7 +223,7 @@ def metabolomics_workbench_get_study_details(study_id: str, api_session):
         try:
             metabolites_response = api_session.get(metabolites_url)
         except requests.exceptions.ConnectionError as e:
-            print(f"Connection error occurred: {e}")
+            logger.error(f"Connection error occurred: {e}")
             return {}, 500
 
         if metabolites_response.ok:
@@ -260,20 +263,16 @@ def metabolomics_workbench_get_study_details(study_id: str, api_session):
         return {}, response.status_code
 
 
-def metabobank_fetch_result_and_raw_files(study_id: str, api_session):
+def metabobank_fetch_result_and_raw_files(study_id: str, api_session: requests.Session):
     """
-
-    :param study_id:
-    :param api_session:
-    :return:
+    Fetches lists of result files and raw data files for a given Metabobank study.
+    :param study_id: current study id
+    :param api_session: current session
+    :return: A tuple containing a pair of lists
+             ([list of result files], [list of raw files]) and the HTTP status code
     """
 
     def get_directories(url: str):
-        """
-
-        :param url:
-        :return:
-        """
         directories = []
 
         response = api_session.get(url)
@@ -290,7 +289,7 @@ def metabobank_fetch_result_and_raw_files(study_id: str, api_session):
 
     def get_result_files(url: str):
         results_files, _ = get_directories(url=f"{url}OtherData/")
-        results_files = [el for el in results_files if el.endswith('txt')]
+        results_files = [f"{url}OtherData/{el}" for el in results_files if el.endswith('txt')]
         return results_files
 
     def get_raw_files(url: str):
@@ -314,7 +313,7 @@ def metabobank_fetch_result_and_raw_files(study_id: str, api_session):
         if 'Rawdata' in directories:
             raw_files = get_raw_files(url=url)
         else:
-            results_files = [el for el in directories if el.endswith('txt')]
+            results_files = [f"{url}{el}" for el in directories if el.endswith('txt')]
             if 'raw' in directories:
                 raw_files = get_raw_files(url=f"{url}raw/")
 
@@ -334,12 +333,12 @@ def metabobank_fetch_result_and_raw_files(study_id: str, api_session):
     return (results_files, raw_files), resp_code
 
 
-def metabobank_get_study_details(study_id: str, api_session):
+def metabobank_get_study_details(study_id: str, api_session: requests.Session):
     """
-
-    :param study_id:
-    :param api_session:
-    :return:
+    Fetches study details from Metabobank, including lists of result files and raw data files.
+    :param study_id: current study id
+    :param api_session: current session
+    :return: dictionary with study details and the HTTP status code
     """
 
     study_info_data = {}

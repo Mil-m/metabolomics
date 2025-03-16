@@ -1,5 +1,7 @@
 # metabolomics
 
+For running locally
+
 ```bash
 pip install -r requirements.txt
 

@@ -33,7 +33,17 @@
       </thead>
       <tbody>
            <tr>
-             <td>{{ data["results_files"] | join(", ") }}</td>
+             <td>
+                <div style="max-height: 150px; overflow-y: auto;">
+                  {% for file_name in data["results_files"] %}
+                  <li>
+                    <a href="{{ url_for('metabobank_download_file', file_url=file_name) }}" download>
+                      {{ file_name }}
+                    </a>
+                  </li>
+                  {% endfor %}
+                </div>
+             </td>
              <td>{{ data["raw_files"] | join(", ") }}</td>
            </tr>
       </tbody>
