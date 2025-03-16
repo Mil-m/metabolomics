@@ -1,6 +1,40 @@
+import functools
+import time
+from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
+import requests
+
+_cache = {}
+CACHE_EXPIRY = 3600
 
 
+def cached(expiry=CACHE_EXPIRY):
+    """
+    Decorator to cache function results with expiry time.
+    :param expiry:
+    :return:
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+
+            if key in _cache:
+                result, timestamp = _cache[key]
+                if time.time() - timestamp < expiry:
+                    return result
+
+            result = func(*args, **kwargs)
+            _cache[key] = (result, time.time())
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+@cached()
 def fetch_study_list(api_url: str, source: str, api_session):
     """
 
@@ -9,23 +43,52 @@ def fetch_study_list(api_url: str, source: str, api_session):
     :param api_session:
     :return:
     """
-    response = api_session.get(api_url)
-    study_lst = []
-    if response.ok:
-        if source == 'metabolights':
-            json_data = response.json()
-            study_lst = json_data.get('content', [])
-        elif source == 'workbench':
-            json_data = response.json()
-            study_lst = [study['study_id'] for study in json_data.values() if 'study_id' in study]
-        elif source == 'metabobank':
-            soup = BeautifulSoup(response.text, "lxml")
-            for link in soup.find_all("a"):
-                href = link.get("href")
-                if href and href.endswith("/"):
-                    if href.startswith('MTBK'):
-                        study_lst.append(href.strip("/"))
-        return [(study, study) for study in study_lst]
+
+    print(f"Fetching study list from {source} (URL: {api_url})")
+
+    # process the response based on the source
+    def process_response(content, is_ok, source):
+        study_lst = []
+        if not is_ok or not content:
+            return []
+
+        try:
+            if source == 'metabolights':
+                import json
+                json_data = json.loads(content)
+                study_lst = json_data.get('content', [])
+            elif source == 'workbench':
+                import json
+                json_data = json.loads(content)
+                study_lst = [study['study_id'] for study in json_data.values() if 'study_id' in study]
+            elif source == 'metabobank':
+                soup = BeautifulSoup(content, "html.parser")
+                for link in soup.find_all("a"):
+                    href = link.get("href")
+                    if href and href.endswith("/"):
+                        if href.startswith('MTBK'):
+                            study_lst.append(href.strip("/"))
+            return [(study, study) for study in study_lst]
+        except Exception as e:
+            print(f"Error processing response from {source}: {e}")
+            return []
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: api_session.get(api_url))
+        try:
+            response = future.result(timeout=30)
+            if response.ok:
+                return process_response(response.text, True, source)
+        except Exception as e:
+            print(f"Async fetch failed: {e}")
+
+    try:
+        response = api_session.get(api_url)
+        if response.ok:
+            return process_response(response.text, True, source)
+    except Exception as e:
+        print(f"Sync fetch failed: {e}")
+
     return []
 
 
@@ -38,7 +101,12 @@ def metabolights_get_study_details(study_id: str, api_session):
     """
 
     study_url = f"https://www.ebi.ac.uk/metabolights/ws/studies/public/study/{study_id}"
-    response = api_session.get(study_url)
+
+    try:
+        response = api_session.get(study_url)
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error occurred: {e}")
+        return {}, 500
 
     if response.ok:
         return response.json()['content'], 200
@@ -115,7 +183,11 @@ def metabolights_fetch_result_files(study_id: str, api_token: str, api_session):
         "Content-Type": "application/json"
     }
 
-    response = api_session.get(url, json=request_data, headers=headers)
+    try:
+        response = api_session.get(url, json=request_data, headers=headers)
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error occurred: {e}")
+        return {}, 500
 
     if response.ok:
         response_data = response.json()
@@ -134,27 +206,49 @@ def metabolomics_workbench_get_study_details(study_id: str, api_session):
     """
 
     study_url = f"https://www.metabolomicsworkbench.org/rest/study/study_id/{study_id}/summary"
-    response = api_session.get(study_url)
+
+    try:
+        response = api_session.get(study_url)
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error occurred: {e}")
+        return {}, 500
+
     if response.ok:
         study_info_data = response.json()
 
         metabolites_url = f"https://www.metabolomicsworkbench.org/rest/study/study_id/{study_id}/metabolites"
-        metabolites_response = api_session.get(metabolites_url)
+        try:
+            metabolites_response = api_session.get(metabolites_url)
+        except requests.exceptions.ConnectionError as e:
+            print(f"Connection error occurred: {e}")
+            return {}, 500
+
         if metabolites_response.ok:
             metabolites_data = metabolites_response.json()
             if metabolites_data:
                 assays_lst_data = []
-                for number, assays_el in metabolites_data.items():
+                if all(key.isdigit() for key in metabolites_data.keys()):
+                    for key, record in metabolites_data.items():
+                        assays_el_data = {}
+                        assays_el_data[key] = {
+                            'metadata': {
+                                'analysis_id': record.get('analysis_id'),
+                                'analysis_summary': record.get('analysis_summary'),
+                                'reported_metabolite_name': record.get('metabolite_name'),
+                                'refmet_name': record.get('refmet_name')
+                            }
+                        }
+                        assays_lst_data.append(assays_el_data)
+                else:
                     assays_el_data = {}
-                    assays_el_data[number] = {}
-
-                    assays_el_data[number]['metadata'] = {
-                        'analysis_id': assays_el['analysis_id'],
-                        'analysis_summary': assays_el['analysis_summary'],
-                        'reported_metabolite_name': assays_el['metabolite_name'],
-                        'refmet_name': assays_el['refmet_name']
+                    assays_el_data[1] = {
+                        'metadata': {
+                            'analysis_id': metabolites_data.get('analysis_id'),
+                            'analysis_summary': metabolites_data.get('analysis_summary'),
+                            'reported_metabolite_name': metabolites_data.get('metabolite_name'),
+                            'refmet_name': metabolites_data.get('refmet_name')
+                        }
                     }
-
                     assays_lst_data.append(assays_el_data)
 
                 study_info_data['assays'] = assays_lst_data

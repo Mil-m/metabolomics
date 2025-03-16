@@ -2,7 +2,6 @@ import io
 import secrets
 import logging
 import zipfile
-
 import requests
 from flask import Flask, jsonify, render_template, url_for, redirect, request, flash, session, send_file
 from flask_bootstrap import Bootstrap
@@ -41,7 +40,11 @@ def metabolights_login(email: str, secret: str):
         "Content-Type": "application/json"
     }
 
-    response = api_session.post(login_url, json=login_data, headers=headers)
+    try:
+        response = api_session.post(login_url, json=login_data, headers=headers)
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error occurred: {e}")
+        return {}, 500
 
     if response.ok:
         api_token = response.json()['content']['apiToken']

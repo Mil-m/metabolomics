@@ -2,3 +2,7 @@ Flask>=0.8
 flask_restplus
 flask_wtf
 flask_bootstrap
+beautifulsoup4>=4.9.0
+lxml>=4.6.0
+aiohttp>=3.7.0
+requests>=2.25.0
