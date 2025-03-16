@@ -16,7 +16,7 @@
 
     <div class="form-container">
       <div class="form-box" id="study-box">
-        <h1>MetaboLights public studies</h1>
+        <h1>MetaboLights studies</h1>
         <form method="POST" action="{{ url_for('metabolomics') }}">
           <input type="hidden" name="form-name" value="metabolights-selection"/>
           {{ metabolights_form.hidden_tag() }}
@@ -42,12 +42,23 @@
       {% endif %}
 
       <div class="form-box" id="metabolomicsworkbench-study-box">
-        <h1>Metabolomics Workbench public studies</h1>
+        <h1>Metabolomics Workbench studies</h1>
         <form method="POST" action="{{ url_for('metabolomics') }}">
           <input type="hidden" name="form-name" value="metabolomicsworkbench-selection"/>
           {{ metabolomicsworkbench_form.hidden_tag() }}
           <label for="{{ metabolomicsworkbench_form.study.id }}">Study:</label>
           {{ metabolomicsworkbench_form.study() }}
+          <input type="submit" value="Get study info">
+        </form>
+      </div>
+
+      <div class="form-box" id="metabobank-study-box">
+        <h1>Metabobank studies</h1>
+        <form method="POST" action="{{ url_for('metabolomics') }}">
+          <input type="hidden" name="form-name" value="metabobank-selection"/>
+          {{ metabobank_form.hidden_tag() }}
+          <label for="{{ metabobank_form.study.id }}">Study:</label>
+          {{ metabobank_form.study() }}
           <input type="submit" value="Get study info">
         </form>
       </div>

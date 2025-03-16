@@ -1,4 +1,4 @@
-import pprint
+from bs4 import BeautifulSoup
 
 
 def fetch_study_list(api_url: str, source: str, api_session):
@@ -10,12 +10,21 @@ def fetch_study_list(api_url: str, source: str, api_session):
     :return:
     """
     response = api_session.get(api_url)
+    study_lst = []
     if response.ok:
-        json_data = response.json()
         if source == 'metabolights':
+            json_data = response.json()
             study_lst = json_data.get('content', [])
         elif source == 'workbench':
+            json_data = response.json()
             study_lst = [study['study_id'] for study in json_data.values() if 'study_id' in study]
+        elif source == 'metabobank':
+            soup = BeautifulSoup(response.text, "lxml")
+            for link in soup.find_all("a"):
+                href = link.get("href")
+                if href and href.endswith("/"):
+                    if href.startswith('MTBK'):
+                        study_lst.append(href.strip("/"))
         return [(study, study) for study in study_lst]
     return []
 
@@ -37,7 +46,7 @@ def metabolights_get_study_details(study_id: str, api_session):
         return {}, response.status_code
 
 
-def fetch_metadata_and_raw_files(assays_content):
+def metabolights_fetch_metadata_and_raw_files(assays_content):
     """
 
     :param assays_content:
@@ -86,7 +95,7 @@ def fetch_metadata_and_raw_files(assays_content):
     return result_data
 
 
-def fetch_result_files(study_id: str, api_token: str, api_session):
+def metabolights_fetch_result_files(study_id: str, api_token: str, api_session):
     """
 
     :param study_id:
@@ -155,3 +164,95 @@ def metabolomics_workbench_get_study_details(study_id: str, api_session):
             return {}, metabolites_response.status_code
     else:
         return {}, response.status_code
+
+
+def metabobank_fetch_result_and_raw_files(study_id: str, api_session):
+    """
+
+    :param study_id:
+    :param api_session:
+    :return:
+    """
+
+    def get_directories(url: str):
+        """
+
+        :param url:
+        :return:
+        """
+        directories = []
+
+        response = api_session.get(url)
+        if response.status_code != 200:
+            return [], response.status_code
+
+        soup = BeautifulSoup(response.text, "lxml")
+        for link in soup.find_all("a"):
+            href = link.get("href")
+            if href:
+                directories.append(href.strip("/"))
+
+        return directories, 200
+
+    def get_result_files(url: str):
+        results_files, _ = get_directories(url=f"{url}OtherData/")
+        results_files = [el for el in results_files if el.endswith('txt')]
+        return results_files
+
+    def get_raw_files(url: str):
+        raw_files, _ = get_directories(url=f"{url}Rawdata/")
+        if len(raw_files) == 0:
+            raw_files, _ = get_directories(url=f"{url}rawdata/")
+        raw_files_lst = [el for el in raw_files if el.endswith('cdf') or el.endswith('zip')]
+        if len(raw_files_lst) == 0:
+            for dir in raw_files:
+                batch, _ = get_directories(url=f"{base_url}Rawdata/{dir}/")
+                raw_files_lst += [el for el in batch if el.endswith('cdf') or el.endswith('zip')]
+        return raw_files_lst
+
+    def get_raw_result_files(url: str):
+        directories, resp_code = get_directories(url=url)
+        results_files = []
+        raw_files = []
+
+        if 'OtherData' in directories:
+            results_files = get_result_files(url=url)
+        if 'Rawdata' in directories:
+            raw_files = get_raw_files(url=url)
+        else:
+            results_files = [el for el in directories if el.endswith('txt')]
+            if 'raw' in directories:
+                raw_files = get_raw_files(url=f"{url}raw/")
+
+        return directories, results_files, raw_files, resp_code
+
+    base_url = f"https://ddbj.nig.ac.jp/public/metabobank/study/{study_id}/"
+
+    directories, results_files, raw_files, resp_code = get_raw_result_files(url=base_url)
+
+    e_directories = [el for el in directories if el.startswith('E')]
+    for e_dir in e_directories:
+        url = f"{base_url}{e_dir}/"
+        _, e_results_files, e_raw_files, e_resp_code = get_raw_result_files(url=url)
+        results_files += e_results_files
+        raw_files += e_raw_files
+
+    return (results_files, raw_files), resp_code
+
+
+def metabobank_get_study_details(study_id: str, api_session):
+    """
+
+    :param study_id:
+    :param api_session:
+    :return:
+    """
+
+    study_info_data = {}
+
+    files, resp_code = metabobank_fetch_result_and_raw_files(study_id=study_id, api_session=api_session)
+
+    study_info_data['results_files'] = files[0]
+    study_info_data['raw_files'] = files[1]
+
+    return study_info_data, resp_code

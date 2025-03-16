@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <title>Study Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='form_style.css') }}">
+    <style>
+      table, th, td {
+         border: 1px solid #333;
+         border-collapse: collapse;
+      }
+      th, td {
+         padding: 8px;
+         text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+     <h1>Study Details</h1>
+    {% if data %}
+
+    {% else %}
+        <p>No study details available.</p>
+    {% endif %}
+
+    <h3>Data</h3>
+    <table>
+      <thead>
+         <tr>
+           <th>Results Files</th>
+           <th>Raw Files</th>
+         </tr>
+      </thead>
+      <tbody>
+           <tr>
+             <td>{{ data["results_files"] | join(", ") }}</td>
+             <td>{{ data["raw_files"] | join(", ") }}</td>
+           </tr>
+      </tbody>
+    </table>
+  </body>
+</html>
