@@ -2,7 +2,7 @@
 
 This repository, in collaboration with **mtbls-service**, provides functionalities to interact with MetaboLights, Metabolomics Workbench and Metabobank study data.
 
-- MetaboLights service: Provides user login functionality, detailed study information retrieval, and downloading study-related result files.
+- MetaboLights service: Provides user login functionality, detailed study and assays information retrieval, and downloading study-related result files via its API.
 - Metabolomics Workbench service: Allows viewing of study details and its assays retrieved via its API.
 - Metabobank service: Integrates with its API for retrieving and downloading study-related files.
 
@@ -67,7 +67,7 @@ This repository, in collaboration with **mtbls-service**, provides functionaliti
 
 ---
 
-# Metabobank Studies
+# Metabobank Service
 
 ## General Features
 
@@ -91,7 +91,7 @@ This repository, in collaboration with **mtbls-service**, provides functionaliti
 pip install -r requirements.txt
 ```
 
-**Using the Flask CLI (Recommended):**
+**Using the Flask CLI:**
 - **Standard Run:**
  ```bash
 export FLASK_APP=api.py && flask run
@@ -109,6 +109,12 @@ export FLASK_APP=api.py && flask run
 
 The service will be available at:
 http://127.0.0.1:5000/metabolomics
+
+**Running in Docker:**
+```bash
+docker build -t metabolomics-app .
+docker run -p 5000:5000 metabolomics-app
+```
 
 ---
 
