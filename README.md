@@ -45,11 +45,11 @@ This repository, in collaboration with **mtbls-service**, provides functionaliti
 
 - **Study Metadata Retrieval:**  
   Retrieve key metadata for studies, including:
-  - **Study Title:**
-  - **Species:**
-  - **Institute:**
-  - **Analysis Type:**
-  - **Number of Samples:**
+  - **Study Title**
+  - **Species**
+  - **Institute**
+  - **Analysis Type**
+  - **Number of Samples**
 
 - **Assay Data Extraction:**  
   Access detailed assay information for each study, including:
